@@ -22,10 +22,11 @@ def main() -> None:
         id="scheduled-grade-check",
         replace_existing=True,
     )
+    startup_job_id = enqueue_scheduled_grade_check()
+    logger.info("Initial grade/exam check enqueued on scheduler startup, job_id=%s", startup_job_id)
     logger.info("Grade check scheduler started, interval=%s minutes", settings.grade_check_interval_minutes)
     scheduler.start()
 
 
 if __name__ == "__main__":
     main()
-

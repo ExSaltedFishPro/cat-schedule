@@ -41,6 +41,7 @@ class Settings(BaseSettings):
     portal_login_path: str = "/"
     portal_lessons_path: str = "/xskb/xskb_list.do"
     portal_grades_path: str = "/kscj/cjcx_list"
+    portal_exams_path: str = "/njlgdx/xsks/xsksap_list"
     portal_request_timeout_seconds: int = 20
     portal_sample_dir: str = "../"
     portal_captcha_solver: str = "auto"

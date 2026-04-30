@@ -1,11 +1,23 @@
 import { CSSProperties, useEffect, useMemo, useState } from "react";
 import { ApiError, api, ScheduleEntry, SchedulePayload } from "../lib/api";
 import { readCache, removeCache, writeCache } from "../lib/localCache";
-import { formatWeekLabel, getCurrentWeekNumber, getWeekDateRange } from "../lib/termDates";
+import { formatWeekLabel, getCurrentWeekNumber, getTermStartDate, getWeekDateRange } from "../lib/termDates";
 
 type WeekData = SchedulePayload["weeks"][number];
 type DayData = WeekData["days"][number];
 type MobileViewMode = "week" | "day";
+type ExamScheduleItem = {
+  id: string;
+  term?: string | null;
+  course_code?: string | null;
+  course_name: string;
+  exam_session?: string | null;
+  exam_time_text?: string | null;
+  exam_start_at?: string | null;
+  exam_end_at?: string | null;
+  location?: string | null;
+  seat_no?: string | null;
+};
 type PositionedItem = {
   item: ScheduleEntry;
   laneIndex: number;
@@ -42,6 +54,7 @@ const TIME_COLUMN_WIDTH = 46;
 const MIN_BLOCKS = 14;
 const SCHEDULE_CACHE_TTL_MS = 15 * 60 * 1000;
 const SCHEDULE_CACHE_LAST_KEY = "cat-schedule:schedule:last";
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 const COURSE_COLORS = [
   { background: "#f08a8c", border: "#dd6d72", text: "#ffffff" },
@@ -61,6 +74,104 @@ function getVisualSectionRange(item: ScheduleEntry) {
     return { start: Number(matched[1]), end: Number(matched[2]) };
   }
   return { start: item.block_start, end: item.block_end };
+}
+
+function getPayloadExams(payload: SchedulePayload | null): ExamScheduleItem[] {
+  return ((payload as (SchedulePayload & { exams?: ExamScheduleItem[] }) | null)?.exams ?? []).filter(
+    (item) => item.exam_start_at
+  );
+}
+
+function dateOnly(value: Date) {
+  return new Date(value.getFullYear(), value.getMonth(), value.getDate());
+}
+
+function isDateInRange(value: Date, range: [Date, Date]) {
+  const day = dateOnly(value).getTime();
+  return day >= dateOnly(range[0]).getTime() && day <= dateOnly(range[1]).getTime();
+}
+
+function timeToSection(value?: string | null) {
+  if (!value) {
+    return 1;
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return 1;
+  }
+  const minutes = date.getHours() * 60 + date.getMinutes();
+  const starts = [8 * 60, 8 * 60 + 55, 10 * 60, 10 * 60 + 55, 13 * 60 + 30, 14 * 60 + 25, 15 * 60 + 30, 16 * 60 + 25, 18 * 60 + 30, 19 * 60 + 25, 20 * 60 + 20, 21 * 60 + 15];
+  let section = 1;
+  for (let index = 0; index < starts.length; index += 1) {
+    if (minutes >= starts[index]) {
+      section = index + 1;
+    }
+  }
+  return section;
+}
+
+function examToScheduleEntry(exam: ExamScheduleItem): ScheduleEntry | null {
+  if (!exam.exam_start_at) {
+    return null;
+  }
+  const startAt = new Date(exam.exam_start_at);
+  if (Number.isNaN(startAt.getTime())) {
+    return null;
+  }
+  const weekday = startAt.getDay() === 0 ? 7 : startAt.getDay();
+  const startSection = timeToSection(exam.exam_start_at);
+  const endSection = Math.max(startSection, timeToSection(exam.exam_end_at));
+  return {
+    id: `exam-${exam.id}`,
+    course_code: exam.course_code,
+    class_no: exam.exam_session ?? null,
+    course_name: `考试：${exam.course_name}`,
+    teacher: exam.seat_no ? `座位 ${exam.seat_no}` : null,
+    weekday,
+    weekday_label: WEEKDAYS[weekday - 1]?.label ?? "",
+    block_start: startSection,
+    block_end: endSection,
+    block_label_start: String(startSection),
+    block_label_end: String(endSection),
+    time_text: exam.exam_time_text || exam.exam_start_at,
+    week_text: "考试安排",
+    week_numbers: [],
+    location: exam.location,
+    credit: null,
+    course_attribute: "考试",
+    selection_stage: null
+  };
+}
+
+function getExamWeekNumber(term: string | null | undefined, exam: ExamScheduleItem) {
+  const startDate = getTermStartDate(term);
+  if (!startDate || !exam.exam_start_at) {
+    return null;
+  }
+  const examDate = new Date(exam.exam_start_at);
+  if (Number.isNaN(examDate.getTime())) {
+    return null;
+  }
+  const diffDays = Math.floor((dateOnly(examDate).getTime() - dateOnly(startDate).getTime()) / DAY_MS);
+  const weekNumber = Math.floor(diffDays / 7) + 1;
+  return weekNumber > 0 ? weekNumber : null;
+}
+
+function buildDisplayWeeks(payload: SchedulePayload | null, term: string | null | undefined): WeekData[] {
+  if (!payload) {
+    return [];
+  }
+  const byWeek = new Map<number, WeekData>();
+  for (const weekItem of payload.weeks) {
+    byWeek.set(weekItem.week_number, weekItem);
+  }
+  for (const exam of getPayloadExams(payload)) {
+    const weekNumber = getExamWeekNumber(term ?? payload.term, exam);
+    if (weekNumber && !byWeek.has(weekNumber)) {
+      byWeek.set(weekNumber, { week_number: weekNumber, days: [] });
+    }
+  }
+  return [...byWeek.values()].sort((left, right) => left.week_number - right.week_number);
 }
 
 function layoutDayItems(items: ScheduleEntry[]): PositionedItem[] {
@@ -297,7 +408,7 @@ function TimetableBoard({
 }
 
 function getDefaultWeekNumber(payload: SchedulePayload, preferredTerm?: string, currentWeek?: number) {
-  const availableWeeks = payload.weeks.map((item) => item.week_number);
+  const availableWeeks = buildDisplayWeeks(payload, preferredTerm ?? payload.term).map((item) => item.week_number);
   const currentTermWeek = getCurrentWeekNumber(availableWeeks, payload.term ?? preferredTerm);
   if (currentTermWeek !== null) {
     return currentTermWeek;
@@ -373,17 +484,40 @@ export function SchedulePage() {
   }, []);
 
   const activeWeek = useMemo(
-    () => data?.weeks.find((item) => item.week_number === week) ?? data?.weeks[0],
-    [data, week]
+    () => buildDisplayWeeks(data, term).find((item) => item.week_number === week) ?? buildDisplayWeeks(data, term)[0],
+    [data, term, week]
   );
+
+  const displayWeeks = useMemo(() => buildDisplayWeeks(data, term), [data, term]);
+
+  const activeWeekDateRange = useMemo(() => {
+    if (!activeWeek) {
+      return null;
+    }
+    return getWeekDateRange(term, activeWeek.week_number);
+  }, [activeWeek, term]);
+
+  const activeWeekExams = useMemo(() => {
+    if (!data || !activeWeekDateRange) {
+      return [];
+    }
+    return getPayloadExams(data)
+      .filter((exam) => {
+        const startAt = new Date(exam.exam_start_at || "");
+        return !Number.isNaN(startAt.getTime()) && isDateInRange(startAt, activeWeekDateRange);
+      })
+      .map(examToScheduleEntry)
+      .filter((item): item is ScheduleEntry => Boolean(item));
+  }, [data, activeWeekDateRange]);
 
   const days = useMemo<DayData[]>(
     () =>
       WEEKDAYS.map(({ weekday, label }) => {
         const matched = activeWeek?.days.find((item) => item.weekday === weekday);
-        return { weekday, weekday_label: label, items: matched?.items ?? [] };
+        const exams = activeWeekExams.filter((item) => item.weekday === weekday);
+        return { weekday, weekday_label: label, items: [...(matched?.items ?? []), ...exams] };
       }),
-    [activeWeek]
+    [activeWeek, activeWeekExams]
   );
 
   const positionedDays = useMemo(() => days.map((day) => layoutDayItems(day.items)), [days]);
@@ -416,15 +550,11 @@ export function SchedulePage() {
   );
 
   const activeWeekRangeText = useMemo(() => {
-    if (!activeWeek) {
+    if (!activeWeekDateRange) {
       return "";
     }
-    const range = getWeekDateRange(term, activeWeek.week_number);
-    if (!range) {
-      return "";
-    }
-    return `${range[0].getMonth() + 1}/${range[0].getDate()} - ${range[1].getMonth() + 1}/${range[1].getDate()}`;
-  }, [activeWeek, term]);
+    return `${activeWeekDateRange[0].getMonth() + 1}/${activeWeekDateRange[0].getDate()} - ${activeWeekDateRange[1].getMonth() + 1}/${activeWeekDateRange[1].getDate()}`;
+  }, [activeWeekDateRange]);
 
   async function refresh() {
     setRefreshing(true);
@@ -480,11 +610,11 @@ export function SchedulePage() {
             </label>
           ) : null}
 
-          {data?.weeks.length ? (
+          {displayWeeks.length ? (
             <label className="field schedule-week-field">
               <span>周次</span>
               <select value={activeWeek?.week_number ?? ""} onChange={(event) => setWeek(Number(event.target.value))}>
-                {data.weeks.map((item) => (
+                {displayWeeks.map((item) => (
                   <option key={item.week_number} value={item.week_number}>
                     {formatWeekLabel(term, item.week_number)}
                   </option>
@@ -502,7 +632,7 @@ export function SchedulePage() {
       <div className="panel timetable-panel">
         {loading ? (
           <p className="muted">正在加载课表...</p>
-        ) : !data?.weeks.length ? (
+        ) : !displayWeeks.length ? (
           <div className="empty-state">当前还没有课表，先去绑定账号后刷新一次。</div>
         ) : (
           <>

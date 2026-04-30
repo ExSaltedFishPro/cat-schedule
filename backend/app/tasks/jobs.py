@@ -8,8 +8,8 @@ from redis import Redis
 from app.core.config import settings
 from app.db.session import SessionLocal
 from app.models import PortalAccount, User
-from app.services.grade_service import notify_new_grades, sync_grades
-from app.services.portal_service import fetch_and_parse_grades, fetch_and_parse_schedule
+from app.services.grade_service import notify_new_exams, notify_new_grades, sync_exams, sync_grades
+from app.services.portal_service import fetch_and_parse_exams, fetch_and_parse_grades, fetch_and_parse_schedule
 from app.services.schedule_service import replace_schedule_snapshot
 from app.services.task_service import mark_task_finished, mark_task_started
 
@@ -90,8 +90,30 @@ def check_grades_job(user_id: str, task_log_id: str | None = None) -> None:
                 raise
 
 
+def check_exams_job(user_id: str) -> None:
+    with SessionLocal() as db:
+        with redis_lock(f"lock:exams:{user_id}") as acquired:
+            if not acquired:
+                return
+            try:
+                user = db.get(User, user_id)
+                if not user or not user.portal_account:
+                    raise ValueError("user portal account not found")
+                html, parsed = fetch_and_parse_exams(db, user.portal_account)
+                changed_records = sync_exams(db, user=user, html=html, parsed=parsed)
+                sent_count = notify_new_exams(db, user=user, changed_records=changed_records)
+                logger.info("exam check finished for user=%s, sent=%s", user_id, sent_count)
+            except Exception as exc:
+                logger.exception("check_exams_job failed: %s", exc)
+                db.rollback()
+                raise
+
+
 def scheduled_grade_check_job() -> None:
     with SessionLocal() as db:
         users = db.query(User).join(PortalAccount).filter(User.email_notifications_enabled.is_(True)).all()
         for user in users:
             check_grades_job(str(user.id))
+        exam_users = db.query(User).join(PortalAccount).all()
+        for user in exam_users:
+            check_exams_job(str(user.id))

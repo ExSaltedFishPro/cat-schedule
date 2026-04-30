@@ -1,7 +1,7 @@
 import { NavLink, Outlet } from "react-router-dom";
 
 const navItems = [
-  { to: "/app/portal", label: "绑定" },
+  { to: "/app/portal", label: "首页" },
   { to: "/app/schedule", label: "课表" },
   { to: "/app/grades", label: "成绩" },
   { to: "/app/settings", label: "设置" }

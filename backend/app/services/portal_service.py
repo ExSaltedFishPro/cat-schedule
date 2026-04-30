@@ -15,7 +15,7 @@ from app.portal.client import (
     deserialize_cookies,
     serialize_cookies,
 )
-from app.portal.parsers import parse_grades_html, parse_lessons_html
+from app.portal.parsers import parse_exams_html, parse_grades_html, parse_lessons_html
 
 
 logger = logging.getLogger(__name__)
@@ -114,3 +114,12 @@ def fetch_and_parse_grades(db: Session, account: PortalAccount):
     account.last_grade_check_at = utcnow()
     db.commit()
     return html, parse_grades_html(html)
+
+
+def fetch_and_parse_exams(db: Session, account: PortalAccount):
+    if not account.portal_username:
+        raise AppError(400, "PORTAL_ACCOUNT_REQUIRED", "请先绑定教务账号")
+    html, cookies = _fetch_with_auto_relogin("fetch_exams", db, account)
+    account.encrypted_cookies = crypto_service.encrypt(serialize_cookies(cookies))
+    db.commit()
+    return html, parse_exams_html(html)

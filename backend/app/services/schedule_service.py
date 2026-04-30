@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.core.config import settings
 from app.models import ScheduleEntry, ScheduleSnapshot, User
 from app.portal.parsers import LessonsParseResult
+from app.services.grade_service import get_exam_schedule_items
 
 
 UNKNOWN_TERM = "unknown"
@@ -154,6 +155,7 @@ def get_schedule_payload(db: Session, *, user: User, term: str | None = None) ->
             "total_entries": 0,
             "entries": [],
             "weeks": [],
+            "exams": get_exam_schedule_items(db, user=user, term=normalized_term),
         }
 
     deduped_entries: list[ScheduleEntry] = []
@@ -193,4 +195,5 @@ def get_schedule_payload(db: Session, *, user: User, term: str | None = None) ->
         "total_entries": len(entries),
         "entries": [_entry_to_payload(entry) for entry in entries],
         "weeks": weeks_payload,
+        "exams": get_exam_schedule_items(db, user=user, term=_payload_term(snapshot.term)),
     }

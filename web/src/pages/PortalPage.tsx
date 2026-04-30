@@ -2,9 +2,33 @@ import { FormEvent, useEffect, useState } from "react";
 import { api, ApiError } from "../lib/api";
 
 type PortalData = Awaited<ReturnType<typeof api.getPortal>>;
+type ExamItem = {
+  id: string;
+  course_name: string;
+  exam_time_text?: string | null;
+  exam_start_at?: string | null;
+  exam_end_at?: string | null;
+  location?: string | null;
+  seat_no?: string | null;
+};
+
+function getUpcomingExams(payload: Awaited<ReturnType<typeof api.getSchedule>>): ExamItem[] {
+  const now = Date.now();
+  return ((payload as { exams?: ExamItem[] }).exams ?? [])
+    .filter((item) => {
+      const endAt = new Date(item.exam_end_at || item.exam_start_at || "").getTime();
+      return !Number.isNaN(endAt) && endAt >= now;
+    })
+    .sort((left, right) => {
+      const leftTime = new Date(left.exam_start_at || "").getTime();
+      const rightTime = new Date(right.exam_start_at || "").getTime();
+      return leftTime - rightTime;
+    });
+}
 
 export function PortalPage() {
   const [data, setData] = useState<PortalData | null>(null);
+  const [upcomingExams, setUpcomingExams] = useState<ExamItem[]>([]);
   const [portalUsername, setPortalUsername] = useState("");
   const [portalPassword, setPortalPassword] = useState("");
   const [loading, setLoading] = useState(true);
@@ -18,6 +42,16 @@ export function PortalPage() {
       const result = await api.getPortal();
       setData(result);
       setPortalUsername(result.portal_username ?? "");
+      if (result.is_bound) {
+        try {
+          const schedule = await api.getSchedule();
+          setUpcomingExams(getUpcomingExams(schedule));
+        } catch {
+          setUpcomingExams([]);
+        }
+      } else {
+        setUpcomingExams([]);
+      }
       setError("");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "加载教务账号失败");
@@ -50,7 +84,7 @@ export function PortalPage() {
   return (
     <section className="page">
       <div className="panel">
-        <h2>教务账号</h2>
+        <h2>首页</h2>
         {loading ? (
           <p className="muted">正在加载...</p>
         ) : (
@@ -63,6 +97,31 @@ export function PortalPage() {
               <span>最近登录</span>
               <strong>{data?.last_successful_login_at ? new Date(data.last_successful_login_at).toLocaleString() : "暂无"}</strong>
             </div>
+          </div>
+        )}
+      </div>
+
+      <div className="panel">
+        <h2>未结束考试</h2>
+        {loading ? (
+          <p className="muted">正在加载...</p>
+        ) : !data?.is_bound ? (
+          <div className="empty-state">绑定教务账号后会显示考试安排。</div>
+        ) : !upcomingExams.length ? (
+          <div className="empty-state">暂无未结束考试。</div>
+        ) : (
+          <div className="grade-list">
+            {upcomingExams.map((exam) => (
+              <div key={exam.id} className="grade-card">
+                <div>
+                  <strong>{exam.course_name}</strong>
+                  <p>{exam.exam_time_text || "时间未公布"}</p>
+                  <small>
+                    {[exam.location, exam.seat_no ? `座位 ${exam.seat_no}` : null].filter(Boolean).join(" · ") || "地点未公布"}
+                  </small>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>

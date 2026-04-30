@@ -20,7 +20,7 @@ export function LoginPage({ onAuthed }: LoginPageProps) {
     try {
       await api.login({ email, password });
       await onAuthed();
-      navigate("/app/schedule");
+      navigate("/app/portal");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "登录失败");
     } finally {

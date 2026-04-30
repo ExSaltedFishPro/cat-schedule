@@ -43,10 +43,10 @@ export default function App() {
 
   return (
     <Routes>
-      <Route path="/login" element={user ? <Navigate to="/app/schedule" replace /> : <LoginPage onAuthed={refreshSession} />} />
+      <Route path="/login" element={user ? <Navigate to="/app/portal" replace /> : <LoginPage onAuthed={refreshSession} />} />
       <Route
         path="/register"
-        element={user ? <Navigate to="/app/schedule" replace /> : <RegisterPage onAuthed={refreshSession} />}
+        element={user ? <Navigate to="/app/portal" replace /> : <RegisterPage onAuthed={refreshSession} />}
       />
       {user ? (
         <Route path="/app" element={<AppShell />}>
@@ -54,10 +54,10 @@ export default function App() {
           <Route path="schedule" element={<SchedulePage />} />
           <Route path="grades" element={<GradesPage />} />
           <Route path="settings" element={<SettingsPage onLoggedOut={refreshSession} />} />
-          <Route index element={<Navigate to="/app/schedule" replace />} />
+          <Route index element={<Navigate to="/app/portal" replace />} />
         </Route>
       ) : null}
-      <Route path="*" element={<Navigate to={user ? "/app/schedule" : "/login"} replace />} />
+      <Route path="*" element={<Navigate to={user ? "/app/portal" : "/login"} replace />} />
     </Routes>
   );
 }

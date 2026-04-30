@@ -4,6 +4,7 @@ import json
 import logging
 import secrets
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from urllib.parse import parse_qsl, urlencode, urljoin, urlsplit, urlunsplit
 
@@ -38,6 +39,15 @@ def decode_response(response: requests.Response) -> str:
     return response.text
 
 
+def current_academic_term(now: datetime | None = None) -> str:
+    value = now or datetime.now()
+    if value.month >= 8:
+        return f"{value.year}-{value.year + 1}-1"
+    if value.month >= 2:
+        return f"{value.year - 1}-{value.year}-2"
+    return f"{value.year - 1}-{value.year}-1"
+
+
 class BasePortalClient:
     def login(self, portal_username: str, portal_password: str) -> PortalLoginResult:
         raise NotImplementedError
@@ -46,6 +56,9 @@ class BasePortalClient:
         raise NotImplementedError
 
     def fetch_grades(self, cookies: dict[str, str]) -> PortalPageResult:
+        raise NotImplementedError
+
+    def fetch_exams(self, cookies: dict[str, str]) -> PortalPageResult:
         raise NotImplementedError
 
 
@@ -74,6 +87,11 @@ class SamplePortalClient(BasePortalClient):
         if not cookies.get("JSESSIONID"):
             raise PortalSessionExpiredError("missing sample session")
         return PortalPageResult(html=self._read_file("grades.html"), cookies=cookies)
+
+    def fetch_exams(self, cookies: dict[str, str]) -> PortalPageResult:
+        if not cookies.get("JSESSIONID"):
+            raise PortalSessionExpiredError("missing sample session")
+        return PortalPageResult(html=self._read_file("考试查询.txt"), cookies=cookies)
 
 
 class RealPortalClient(BasePortalClient):
@@ -225,6 +243,24 @@ class RealPortalClient(BasePortalClient):
             timeout=self.timeout,
             headers={
                 "Referer": url,
+                "Origin": self._origin_for(url),
+                "Content-Type": "application/x-www-form-urlencoded",
+            },
+        )
+        html = decode_response(response)
+        self._assert_not_login_page(html)
+        return PortalPageResult(html=html, cookies=requests.utils.dict_from_cookiejar(session.cookies))
+
+    def fetch_exams(self, cookies: dict[str, str]) -> PortalPageResult:
+        session = self._session(cookies)
+        url = urljoin(self.base_url + "/", settings.portal_exams_path.lstrip("/"))
+        referer = urljoin(self.base_url + "/", settings.portal_exams_path.replace("_list", "_query").lstrip("/"))
+        response = session.post(
+            url,
+            data={"xnxqid": current_academic_term()},
+            timeout=self.timeout,
+            headers={
+                "Referer": referer,
                 "Origin": self._origin_for(url),
                 "Content-Type": "application/x-www-form-urlencoded",
             },

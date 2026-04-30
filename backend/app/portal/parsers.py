@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import re
 from dataclasses import dataclass
+from datetime import datetime
 
 from bs4 import BeautifulSoup, Tag
 
@@ -103,6 +104,28 @@ class GradeItemParsed:
 @dataclass
 class GradesParseResult:
     items: list[GradeItemParsed]
+    raw_summary: dict
+
+
+@dataclass
+class ExamItemParsed:
+    record_key: str
+    term: str
+    exam_session: str | None
+    course_code: str | None
+    course_name: str
+    exam_time_text: str
+    exam_start_at: str | None
+    exam_end_at: str | None
+    location: str | None
+    seat_no: str | None
+    raw_payload: dict
+
+
+@dataclass
+class ExamsParseResult:
+    term: str | None
+    items: list[ExamItemParsed]
     raw_summary: dict
 
 
@@ -630,3 +653,70 @@ def parse_grades_html(html: str) -> GradesParseResult:
             )
         )
     return GradesParseResult(items=items, raw_summary={"row_count": len(items)})
+
+
+def _parse_exam_time_range(value: str) -> tuple[str | None, str | None]:
+    match = re.search(r"(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})\s*[~\-]\s*(\d{2}:\d{2})", value)
+    if not match:
+        return None, None
+    day, start_time, end_time = match.groups()
+    try:
+        start_at = datetime.strptime(f"{day} {start_time}", "%Y-%m-%d %H:%M")
+        end_at = datetime.strptime(f"{day} {end_time}", "%Y-%m-%d %H:%M")
+    except ValueError:
+        return None, None
+    return start_at.isoformat(timespec="minutes"), end_at.isoformat(timespec="minutes")
+
+
+def parse_exams_html(html: str) -> ExamsParseResult:
+    soup = BeautifulSoup(html, "html.parser")
+    page_text = normalize_text(soup.get_text(" ", strip=True))
+    term_match = re.search(r"\d{4}-\d{4}-\d+", page_text)
+    term = term_match.group(0) if term_match else None
+
+    items: list[ExamItemParsed] = []
+    rows = soup.select("#dataList tr")[1:]
+    for row in rows:
+        cells = row.find_all("td")
+        if len(cells) < 7:
+            continue
+        raw_columns = [normalize_text(cell.get_text(" ", strip=True)) for cell in cells]
+        exam_session = raw_columns[1] or None
+        course_code = raw_columns[2] or None
+        course_name = raw_columns[3]
+        exam_time_text = raw_columns[4]
+        location = raw_columns[5] or None
+        seat_no = raw_columns[6] or None
+        if not course_name or not exam_time_text:
+            continue
+        exam_start_at, exam_end_at = _parse_exam_time_range(exam_time_text)
+        record_source = "|".join(
+            [term or "", exam_session or "", course_code or "", course_name, exam_time_text, location or "", seat_no or ""]
+        )
+        record_key = hashlib.sha256(f"exam|{record_source}".encode("utf-8")).hexdigest()
+        items.append(
+            ExamItemParsed(
+                record_key=record_key,
+                term=term or "unknown",
+                exam_session=exam_session,
+                course_code=course_code,
+                course_name=course_name,
+                exam_time_text=exam_time_text,
+                exam_start_at=exam_start_at,
+                exam_end_at=exam_end_at,
+                location=location,
+                seat_no=seat_no,
+                raw_payload={
+                    "record_type": "exam",
+                    "active": True,
+                    "exam_session": exam_session,
+                    "exam_time_text": exam_time_text,
+                    "exam_start_at": exam_start_at,
+                    "exam_end_at": exam_end_at,
+                    "location": location,
+                    "seat_no": seat_no,
+                    "raw_columns": raw_columns,
+                },
+            )
+        )
+    return ExamsParseResult(term=term, items=items, raw_summary={"row_count": len(items)})
