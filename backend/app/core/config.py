@@ -54,6 +54,7 @@ class Settings(BaseSettings):
     scheduler_timezone: str = "Asia/Hong_Kong"
 
     queue_name: str = "cat_schedule"
+    notifications_file_path: str = "notifications.json"
 
     @field_validator("api_cors_origins", mode="before")
     @classmethod
