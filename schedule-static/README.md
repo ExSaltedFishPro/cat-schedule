@@ -80,8 +80,6 @@ sudo mkdir -p /srv/cat-schedule
 sudo cp dist/index.html /srv/cat-schedule/index.html
 ```
 
-仓库提供了 [`nginx.example.conf`](nginx.example.conf)。该配置不包含任何 API 反向代理，并为 HTML 设置了不缓存和禁止搜索引擎索引的响应头。
-
 课表通常包含个人课程、教师和教室信息。若服务器可以从公网访问，建议额外使用 Basic Auth、VPN 或其他访问控制。
 
 ## 数据格式
@@ -94,14 +92,5 @@ sudo cp dist/index.html /srv/cat-schedule/index.html
 - 规范化课程条目；
 - 按周、星期组织的页面数据。
 
+
 JSON 和 HTML 都不会保存原始教务处 HTML、隐藏表单字段、脚本或 Cookie。单个输入文件只包含当前页面实际展示的一个学期；教务页面下拉框里的其他学期不会被错误标记为已有课表。
-
-## 测试
-
-测试使用完全虚构的课表 fixture：
-
-```bash
-python3 -m unittest discover -s tests -v
-```
-
-真实教务页面结构发生变化时，应先提供一份脱敏后的 HTML，并为对应结构增加 fixture，再调整解析规则。
