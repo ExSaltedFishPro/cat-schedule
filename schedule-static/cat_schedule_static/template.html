@@ -1,0 +1,966 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="referrer" content="no-referrer">
+    <meta name="robots" content="noindex,nofollow,noarchive">
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; font-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'"
+    >
+    <title>__CAT_SCHEDULE_TITLE__</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+          "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+        --ink: #20302b;
+        --muted: #6f7f79;
+        --paper: #fffdfa;
+        --line: #dfe7e2;
+        --accent: #367761;
+        --accent-strong: #265846;
+        --soft: #edf5f1;
+        --block-height: 60px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        min-height: 100%;
+        background: #e9f0ec;
+      }
+
+      body {
+        min-width: 320px;
+        min-height: 100vh;
+        margin: 0;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at 8% 0%, rgba(255, 255, 255, 0.94), transparent 30rem),
+          linear-gradient(145deg, #eaf3ee 0%, #f6f0e8 100%);
+      }
+
+      button,
+      select {
+        font: inherit;
+      }
+
+      button {
+        color: inherit;
+      }
+
+      .page-shell {
+        width: min(1280px, calc(100% - 32px));
+        margin: 0 auto;
+        padding: 32px 0 40px;
+      }
+
+      .hero,
+      .panel {
+        border: 1px solid rgba(48, 82, 70, 0.12);
+        border-radius: 24px;
+        background: rgba(255, 253, 250, 0.92);
+        box-shadow: 0 18px 50px rgba(50, 72, 63, 0.09);
+        backdrop-filter: blur(12px);
+      }
+
+      .hero {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 24px;
+        padding: 28px 30px;
+      }
+
+      .eyebrow {
+        margin: 0 0 8px;
+        color: var(--accent);
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(28px, 5vw, 48px);
+        line-height: 1.05;
+        letter-spacing: -0.04em;
+      }
+
+      .hero-meta {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 8px;
+      }
+
+      .meta-chip {
+        padding: 8px 12px;
+        border-radius: 999px;
+        color: #3e5e52;
+        background: var(--soft);
+        font-size: 13px;
+        white-space: nowrap;
+      }
+
+      .panel {
+        margin-top: 18px;
+        padding: 18px;
+      }
+
+      .toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 16px;
+      }
+
+      .week-controls,
+      .view-controls {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .control-button,
+      .view-button,
+      .day-button,
+      select {
+        min-height: 40px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: #fff;
+      }
+
+      .control-button,
+      .view-button,
+      .day-button {
+        cursor: pointer;
+      }
+
+      .control-button {
+        min-width: 42px;
+        padding: 0 12px;
+        font-weight: 700;
+      }
+
+      .control-button:disabled {
+        cursor: not-allowed;
+        opacity: 0.35;
+      }
+
+      select {
+        max-width: min(58vw, 320px);
+        padding: 0 34px 0 12px;
+        color: var(--ink);
+      }
+
+      .view-controls {
+        padding: 4px;
+        border-radius: 14px;
+        background: var(--soft);
+      }
+
+      .view-button {
+        min-height: 34px;
+        padding: 0 14px;
+        border-color: transparent;
+        background: transparent;
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .view-button.active {
+        color: #fff;
+        background: var(--accent);
+        box-shadow: 0 4px 12px rgba(54, 119, 97, 0.25);
+      }
+
+      .week-caption {
+        min-height: 22px;
+        margin: -6px 0 12px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .day-strip {
+        display: none;
+        grid-template-columns: repeat(7, minmax(44px, 1fr));
+        gap: 6px;
+        margin: 0 0 12px;
+      }
+
+      .day-strip.visible {
+        display: grid;
+      }
+
+      .day-button {
+        min-width: 0;
+        padding: 7px 3px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+        line-height: 1.4;
+        white-space: pre-line;
+      }
+
+      .day-button.active {
+        border-color: var(--accent);
+        color: #fff;
+        background: var(--accent);
+      }
+
+      .warning-box {
+        margin: 0 0 14px;
+        padding: 12px 14px;
+        border: 1px solid #e6c981;
+        border-radius: 14px;
+        color: #6e5319;
+        background: #fff8df;
+        font-size: 13px;
+      }
+
+      .warning-box summary {
+        cursor: pointer;
+        font-weight: 800;
+      }
+
+      .warning-box ul {
+        margin: 10px 0 0;
+        padding-left: 20px;
+      }
+
+      .board-scroll {
+        overflow-x: auto;
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        background: var(--paper);
+        scrollbar-color: #a8bbb3 transparent;
+      }
+
+      .timetable-frame {
+        display: grid;
+        min-width: 860px;
+        background: var(--paper);
+      }
+
+      .timetable-frame.single-day {
+        min-width: 0;
+      }
+
+      .corner,
+      .day-header {
+        position: sticky;
+        top: 0;
+        z-index: 30;
+        min-height: 50px;
+        border-bottom: 1px solid var(--line);
+        background: rgba(255, 253, 250, 0.97);
+      }
+
+      .corner {
+        left: 0;
+        z-index: 35;
+        display: grid;
+        place-items: center;
+        border-right: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .day-header {
+        display: grid;
+        place-items: center;
+        font-size: 13px;
+        font-weight: 800;
+        line-height: 1.4;
+        text-align: center;
+        white-space: pre-line;
+      }
+
+      .time-column {
+        position: sticky;
+        left: 0;
+        z-index: 20;
+        border-right: 1px solid var(--line);
+        background: rgba(255, 253, 250, 0.97);
+      }
+
+      .time-slot,
+      .grid-slot {
+        height: var(--block-height);
+        border-bottom: 1px solid var(--line);
+      }
+
+      .time-slot {
+        display: grid;
+        place-items: center;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .day-column {
+        position: relative;
+        min-width: 0;
+        border-right: 1px solid var(--line);
+      }
+
+      .day-column:last-child {
+        border-right: 0;
+      }
+
+      .grid-slot:nth-child(even) {
+        background: rgba(237, 245, 241, 0.22);
+      }
+
+      .course-card {
+        position: absolute;
+        z-index: 5;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        overflow: hidden;
+        padding: 6px 7px;
+        border: 1px solid;
+        border-radius: 10px;
+        cursor: pointer;
+        text-align: left;
+        box-shadow: 0 3px 10px rgba(36, 59, 50, 0.12);
+      }
+
+      .course-card:hover,
+      .course-card:focus-visible {
+        z-index: 15;
+        outline: 3px solid rgba(38, 88, 70, 0.24);
+        transform: translateY(-1px);
+      }
+
+      .course-section {
+        margin-bottom: 2px;
+        font-size: 10px;
+        font-weight: 800;
+        opacity: 0.82;
+      }
+
+      .course-name {
+        display: -webkit-box;
+        overflow: hidden;
+        font-size: 12px;
+        font-weight: 800;
+        line-height: 1.22;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 3;
+      }
+
+      .course-location {
+        display: -webkit-box;
+        overflow: hidden;
+        margin-top: 4px;
+        font-size: 10px;
+        line-height: 1.2;
+        opacity: 0.84;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+      }
+
+      .empty-state {
+        padding: 56px 20px;
+        color: var(--muted);
+        text-align: center;
+      }
+
+      dialog {
+        width: min(460px, calc(100% - 30px));
+        padding: 0;
+        border: 0;
+        border-radius: 22px;
+        color: var(--ink);
+        background: var(--paper);
+        box-shadow: 0 30px 90px rgba(25, 43, 36, 0.28);
+      }
+
+      dialog::backdrop {
+        background: rgba(25, 40, 35, 0.48);
+        backdrop-filter: blur(5px);
+      }
+
+      .dialog-body {
+        padding: 24px;
+      }
+
+      .dialog-heading {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 14px;
+      }
+
+      .dialog-heading h2 {
+        margin: 0;
+        font-size: 24px;
+        line-height: 1.2;
+      }
+
+      .dialog-close {
+        flex: 0 0 auto;
+        width: 38px;
+        height: 38px;
+        border: 0;
+        border-radius: 50%;
+        cursor: pointer;
+        background: var(--soft);
+        font-size: 22px;
+      }
+
+      .detail-list {
+        display: grid;
+        gap: 0;
+        margin: 20px 0 0;
+      }
+
+      .detail-row {
+        display: grid;
+        grid-template-columns: 78px minmax(0, 1fr);
+        gap: 12px;
+        padding: 11px 0;
+        border-top: 1px solid var(--line);
+      }
+
+      .detail-label {
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .detail-value {
+        overflow-wrap: anywhere;
+        font-size: 14px;
+        font-weight: 700;
+      }
+
+      footer {
+        padding: 18px 4px 0;
+        color: var(--muted);
+        font-size: 12px;
+        text-align: center;
+      }
+
+      @media (max-width: 720px) {
+        .page-shell {
+          width: min(100% - 18px, 1280px);
+          padding: 10px 0 24px;
+        }
+
+        .hero,
+        .panel {
+          border-radius: 18px;
+        }
+
+        .hero {
+          display: block;
+          padding: 22px 18px;
+        }
+
+        .hero-meta {
+          justify-content: flex-start;
+          margin-top: 16px;
+        }
+
+        .panel {
+          margin-top: 10px;
+          padding: 10px;
+        }
+
+        .toolbar {
+          align-items: stretch;
+          flex-direction: column;
+        }
+
+        .week-controls {
+          display: grid;
+          grid-template-columns: auto minmax(0, 1fr) auto;
+        }
+
+        select {
+          width: 100%;
+          max-width: none;
+        }
+
+        .view-controls {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+        }
+
+        .week-caption {
+          margin-top: 0;
+        }
+      }
+
+      @media print {
+        @page {
+          size: landscape;
+          margin: 8mm;
+        }
+
+        body {
+          background: #fff;
+        }
+
+        .page-shell {
+          width: 100%;
+          padding: 0;
+        }
+
+        .hero,
+        .panel {
+          border: 0;
+          box-shadow: none;
+        }
+
+        .hero {
+          padding: 0 0 12px;
+        }
+
+        .toolbar,
+        .day-strip,
+        .warning-box,
+        footer {
+          display: none !important;
+        }
+
+        .board-scroll {
+          overflow: visible;
+        }
+
+        .timetable-frame {
+          min-width: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page-shell">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">Offline Schedule</p>
+          <h1 id="page-title">C.A.T. Schedule</h1>
+        </div>
+        <div class="hero-meta" aria-label="课表信息">
+          <span class="meta-chip" id="term-chip"></span>
+          <span class="meta-chip" id="count-chip"></span>
+          <span class="meta-chip" id="generated-chip"></span>
+        </div>
+      </header>
+
+      <section class="panel" aria-label="课表">
+        <div class="toolbar">
+          <div class="week-controls">
+            <button class="control-button" id="previous-week" type="button" aria-label="上一周">←</button>
+            <select id="week-select" aria-label="选择周次"></select>
+            <button class="control-button" id="next-week" type="button" aria-label="下一周">→</button>
+          </div>
+          <div class="view-controls" aria-label="显示方式">
+            <button class="view-button active" id="week-view" type="button">整周</button>
+            <button class="view-button" id="day-view" type="button">单日</button>
+          </div>
+        </div>
+        <p class="week-caption" id="week-caption"></p>
+        <div class="day-strip" id="day-strip"></div>
+        <div id="warnings"></div>
+        <div class="board-scroll" id="board-scroll">
+          <div id="timetable"></div>
+        </div>
+      </section>
+
+      <footer id="footer-text"></footer>
+    </main>
+
+    <dialog id="course-dialog">
+      <div class="dialog-body">
+        <div class="dialog-heading">
+          <h2 id="dialog-title"></h2>
+          <button class="dialog-close" id="dialog-close" type="button" aria-label="关闭">×</button>
+        </div>
+        <div class="detail-list" id="dialog-details"></div>
+      </div>
+    </dialog>
+
+    <script id="cat-schedule-data" type="application/json">__CAT_SCHEDULE_DATA__</script>
+    <script>
+      (() => {
+        "use strict";
+
+        const documentData = JSON.parse(document.getElementById("cat-schedule-data").textContent);
+        const schedule = documentData.schedule;
+        const weekdays = [
+          { weekday: 1, label: "星期一", short: "周一" },
+          { weekday: 2, label: "星期二", short: "周二" },
+          { weekday: 3, label: "星期三", short: "周三" },
+          { weekday: 4, label: "星期四", short: "周四" },
+          { weekday: 5, label: "星期五", short: "周五" },
+          { weekday: 6, label: "星期六", short: "周六" },
+          { weekday: 7, label: "星期日", short: "周日" }
+        ];
+        const palette = [
+          { background: "#f08a8c", border: "#d86e72", text: "#ffffff" },
+          { background: "#7eafe4", border: "#6393ca", text: "#ffffff" },
+          { background: "#9c8ce5", border: "#8070ce", text: "#ffffff" },
+          { background: "#91cda7", border: "#70b68a", text: "#173e2a" },
+          { background: "#edb966", border: "#d59c43", text: "#5d380d" },
+          { background: "#67beb8", border: "#4ba09a", text: "#123e3b" }
+        ];
+        const state = {
+          weekIndex: initialWeekIndex(),
+          view: "week",
+          weekday: currentWeekday()
+        };
+
+        const elements = {
+          title: document.getElementById("page-title"),
+          term: document.getElementById("term-chip"),
+          count: document.getElementById("count-chip"),
+          generated: document.getElementById("generated-chip"),
+          weekSelect: document.getElementById("week-select"),
+          previous: document.getElementById("previous-week"),
+          next: document.getElementById("next-week"),
+          weekView: document.getElementById("week-view"),
+          dayView: document.getElementById("day-view"),
+          caption: document.getElementById("week-caption"),
+          dayStrip: document.getElementById("day-strip"),
+          warnings: document.getElementById("warnings"),
+          boardScroll: document.getElementById("board-scroll"),
+          timetable: document.getElementById("timetable"),
+          footer: document.getElementById("footer-text"),
+          dialog: document.getElementById("course-dialog"),
+          dialogTitle: document.getElementById("dialog-title"),
+          dialogDetails: document.getElementById("dialog-details"),
+          dialogClose: document.getElementById("dialog-close")
+        };
+
+        function parseDate(value) {
+          const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+          if (!match) return null;
+          return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]), 12, 0, 0, 0);
+        }
+
+        function currentWeekday() {
+          const value = new Date().getDay();
+          return value === 0 ? 7 : value;
+        }
+
+        function initialWeekIndex() {
+          if (!schedule.weeks.length) return 0;
+          const start = parseDate(schedule.term_start_date);
+          if (!start) {
+            const firstKnown = schedule.weeks.findIndex((item) => item.week_number > 0);
+            return firstKnown >= 0 ? firstKnown : 0;
+          }
+          const today = new Date();
+          const localToday = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 12, 0, 0, 0);
+          const rawWeek = Math.floor((localToday.getTime() - start.getTime()) / 86400000 / 7) + 1;
+          const exactIndex = schedule.weeks.findIndex((item) => item.week_number === rawWeek);
+          if (exactIndex >= 0) return exactIndex;
+          const known = schedule.weeks
+            .map((item, index) => ({ number: item.week_number, index }))
+            .filter((item) => item.number > 0);
+          if (!known.length) return 0;
+          if (rawWeek <= known[0].number) return known[0].index;
+          return known[known.length - 1].index;
+        }
+
+        function weekLabel(weekNumber) {
+          return weekNumber === 0 ? "周次未识别" : `第 ${weekNumber} 周`;
+        }
+
+        function weekRange(weekNumber) {
+          const start = parseDate(schedule.term_start_date);
+          if (!start || weekNumber <= 0) return null;
+          const weekStart = new Date(start);
+          weekStart.setDate(start.getDate() + (weekNumber - 1) * 7);
+          const weekEnd = new Date(weekStart);
+          weekEnd.setDate(weekStart.getDate() + 6);
+          const format = (value) => `${value.getMonth() + 1}/${value.getDate()}`;
+          return `${format(weekStart)} - ${format(weekEnd)}`;
+        }
+
+        function weekdayDate(weekNumber, weekday) {
+          const start = parseDate(schedule.term_start_date);
+          if (!start || weekNumber <= 0) return "";
+          const value = new Date(start);
+          value.setDate(start.getDate() + (weekNumber - 1) * 7 + weekday - 1);
+          return `${value.getMonth() + 1}/${value.getDate()}`;
+        }
+
+        function visualRange(item) {
+          const match = String(item.time_text || "").match(/[（(](\d{1,2})\s*[-－—~～]\s*(\d{1,2})小节[）)]/);
+          return match
+            ? { start: Number(match[1]), end: Number(match[2]) }
+            : { start: Number(item.block_start), end: Number(item.block_end) };
+        }
+
+        function layoutItems(items) {
+          const sorted = [...items].sort((left, right) => {
+            const leftRange = visualRange(left);
+            const rightRange = visualRange(right);
+            return leftRange.start - rightRange.start || rightRange.end - leftRange.end || left.course_name.localeCompare(right.course_name, "zh-CN");
+          });
+          const result = [];
+          let group = [];
+          let groupEnd = 0;
+
+          function flush() {
+            if (!group.length) return;
+            const laneEnds = [];
+            const placed = [];
+            for (const item of group) {
+              const range = visualRange(item);
+              let lane = laneEnds.findIndex((end) => end < range.start);
+              if (lane < 0) {
+                lane = laneEnds.length;
+                laneEnds.push(range.end);
+              } else {
+                laneEnds[lane] = range.end;
+              }
+              placed.push({ item, lane });
+            }
+            const laneCount = Math.max(laneEnds.length, 1);
+            for (const value of placed) result.push({ ...value, laneCount });
+            group = [];
+            groupEnd = 0;
+          }
+
+          for (const item of sorted) {
+            const range = visualRange(item);
+            if (!group.length || range.start <= groupEnd) {
+              group.push(item);
+              groupEnd = Math.max(groupEnd, range.end);
+            } else {
+              flush();
+              group = [item];
+              groupEnd = range.end;
+            }
+          }
+          flush();
+          return result;
+        }
+
+        function courseColor(name) {
+          let hash = 0;
+          for (const character of String(name)) hash = (hash + character.codePointAt(0)) % 65535;
+          return palette[hash % palette.length];
+        }
+
+        function node(tag, className, text) {
+          const value = document.createElement(tag);
+          if (className) value.className = className;
+          if (text !== undefined && text !== null) value.textContent = String(text);
+          return value;
+        }
+
+        function sectionText(item) {
+          const range = visualRange(item);
+          return range.start === range.end ? `第 ${range.start} 节` : `第 ${range.start}-${range.end} 节`;
+        }
+
+        function showCourse(item) {
+          elements.dialogTitle.textContent = item.course_name;
+          elements.dialogDetails.replaceChildren();
+          const details = [
+            ["教师", item.teacher || "未填写"],
+            ["地点", item.location || "未填写"],
+            ["节次", sectionText(item)],
+            ["时间", item.time_text || "未填写"],
+            ["周次", item.week_text || "未识别"],
+            ["课程编号", item.course_code || "-"],
+            ["教学班号", item.class_no || "-"],
+            ["学分", item.credit || "-"],
+            ["课程属性", item.course_attribute || "-"]
+          ];
+          for (const [label, value] of details) {
+            const row = node("div", "detail-row");
+            row.append(node("span", "detail-label", label), node("span", "detail-value", value));
+            elements.dialogDetails.append(row);
+          }
+          if (typeof elements.dialog.showModal === "function") elements.dialog.showModal();
+          else elements.dialog.setAttribute("open", "");
+        }
+
+        function renderWarnings() {
+          elements.warnings.replaceChildren();
+          if (!documentData.warnings || !documentData.warnings.length) return;
+          const box = node("details", "warning-box");
+          box.append(node("summary", "", `解析提示（${documentData.warnings.length}）`));
+          const list = node("ul");
+          for (const warning of documentData.warnings) list.append(node("li", "", warning));
+          box.append(list);
+          elements.warnings.append(box);
+        }
+
+        function renderWeekSelect() {
+          elements.weekSelect.replaceChildren();
+          for (const week of schedule.weeks) {
+            const range = weekRange(week.week_number);
+            const option = node("option", "", `${weekLabel(week.week_number)}${range ? ` (${range})` : ""}`);
+            option.value = String(week.week_number);
+            elements.weekSelect.append(option);
+          }
+          const active = schedule.weeks[state.weekIndex];
+          if (active) elements.weekSelect.value = String(active.week_number);
+          elements.weekSelect.disabled = !schedule.weeks.length;
+          elements.previous.disabled = state.weekIndex <= 0;
+          elements.next.disabled = state.weekIndex >= schedule.weeks.length - 1;
+        }
+
+        function renderDayStrip() {
+          elements.dayStrip.replaceChildren();
+          elements.dayStrip.classList.toggle("visible", state.view === "day");
+          const activeWeek = schedule.weeks[state.weekIndex];
+          for (const day of weekdays) {
+            const date = activeWeek ? weekdayDate(activeWeek.week_number, day.weekday) : "";
+            const button = node(
+              "button",
+              `day-button${state.weekday === day.weekday ? " active" : ""}`,
+              `${day.short}${date ? `\n${date}` : ""}`
+            );
+            button.type = "button";
+            button.addEventListener("click", () => {
+              state.weekday = day.weekday;
+              render();
+            });
+            elements.dayStrip.append(button);
+          }
+        }
+
+        function renderBoard() {
+          elements.timetable.replaceChildren();
+          const activeWeek = schedule.weeks[state.weekIndex];
+          if (!activeWeek) {
+            elements.timetable.append(node("div", "empty-state", "当前课表没有可显示的周次。"));
+            return;
+          }
+
+          const sourceDays = weekdays.map((weekday) => {
+            const matched = activeWeek.days.find((day) => day.weekday === weekday.weekday);
+            return { ...weekday, items: matched ? matched.items : [] };
+          });
+          const displayDays = state.view === "day" ? sourceDays.filter((day) => day.weekday === state.weekday) : sourceDays;
+          const maxBlock = displayDays
+            .flatMap((day) => day.items)
+            .reduce((maximum, item) => Math.max(maximum, visualRange(item).end), 0);
+          const totalBlocks = Math.max(14, maxBlock);
+          const frame = node("div", `timetable-frame${state.view === "day" ? " single-day" : ""}`);
+          frame.style.gridTemplateColumns = `52px repeat(${displayDays.length}, minmax(108px, 1fr))`;
+          frame.style.gridTemplateRows = `50px ${totalBlocks * 60}px`;
+
+          const corner = node("div", "corner", "节次");
+          corner.style.gridColumn = "1";
+          corner.style.gridRow = "1";
+          frame.append(corner);
+
+          displayDays.forEach((day, index) => {
+            const date = weekdayDate(activeWeek.week_number, day.weekday);
+            const header = node("div", "day-header", `${day.label}${date ? `\n${date}` : ""}`);
+            header.style.gridColumn = String(index + 2);
+            header.style.gridRow = "1";
+            frame.append(header);
+          });
+
+          const timeColumn = node("div", "time-column");
+          timeColumn.style.gridColumn = "1";
+          timeColumn.style.gridRow = "2";
+          for (let block = 1; block <= totalBlocks; block += 1) timeColumn.append(node("div", "time-slot", block));
+          frame.append(timeColumn);
+
+          displayDays.forEach((day, dayIndex) => {
+            const column = node("div", "day-column");
+            column.style.gridColumn = String(dayIndex + 2);
+            column.style.gridRow = "2";
+            for (let block = 1; block <= totalBlocks; block += 1) column.append(node("div", "grid-slot"));
+
+            for (const placed of layoutItems(day.items)) {
+              const range = visualRange(placed.item);
+              const span = Math.max(1, range.end - range.start + 1);
+              const width = 100 / placed.laneCount;
+              const color = courseColor(placed.item.course_name);
+              const card = node("button", "course-card");
+              card.type = "button";
+              card.style.top = `${(range.start - 1) * 60 + 3}px`;
+              card.style.height = `${span * 60 - 6}px`;
+              card.style.left = `calc(${placed.lane * width}% + 2px)`;
+              card.style.width = `calc(${width}% - 4px)`;
+              card.style.background = color.background;
+              card.style.borderColor = color.border;
+              card.style.color = color.text;
+              card.title = `${placed.item.course_name} · ${sectionText(placed.item)}`;
+              card.append(node("span", "course-section", sectionText(placed.item)));
+              card.append(node("strong", "course-name", placed.item.course_name));
+              if (span >= 2 && placed.item.location) card.append(node("span", "course-location", placed.item.location));
+              card.addEventListener("click", () => showCourse(placed.item));
+              column.append(card);
+            }
+            frame.append(column);
+          });
+
+          elements.timetable.append(frame);
+          elements.boardScroll.scrollLeft = 0;
+        }
+
+        function render() {
+          const activeWeek = schedule.weeks[state.weekIndex];
+          renderWeekSelect();
+          renderDayStrip();
+          elements.weekView.classList.toggle("active", state.view === "week");
+          elements.dayView.classList.toggle("active", state.view === "day");
+          const range = activeWeek ? weekRange(activeWeek.week_number) : null;
+          elements.caption.textContent = range ? `当前显示：${range}` : "";
+          renderBoard();
+        }
+
+        elements.title.textContent = documentData.page_title || "C.A.T. Schedule";
+        elements.term.textContent = schedule.term;
+        elements.count.textContent = `${schedule.total_entries} 条课程记录`;
+        const generated = new Date(documentData.generated_at);
+        elements.generated.textContent = Number.isNaN(generated.getTime())
+          ? "离线生成"
+          : `生成于 ${generated.toLocaleString("zh-CN")}`;
+        elements.footer.textContent = `由 ${documentData.generator.name} ${documentData.generator.version} 离线生成 · 页面不会连接网络`;
+        renderWarnings();
+
+        elements.weekSelect.addEventListener("change", (event) => {
+          const index = schedule.weeks.findIndex((item) => String(item.week_number) === event.target.value);
+          if (index >= 0) state.weekIndex = index;
+          render();
+        });
+        elements.previous.addEventListener("click", () => {
+          state.weekIndex = Math.max(0, state.weekIndex - 1);
+          render();
+        });
+        elements.next.addEventListener("click", () => {
+          state.weekIndex = Math.min(schedule.weeks.length - 1, state.weekIndex + 1);
+          render();
+        });
+        elements.weekView.addEventListener("click", () => {
+          state.view = "week";
+          render();
+        });
+        elements.dayView.addEventListener("click", () => {
+          state.view = "day";
+          render();
+        });
+        elements.dialogClose.addEventListener("click", () => elements.dialog.close());
+        elements.dialog.addEventListener("click", (event) => {
+          if (event.target === elements.dialog) elements.dialog.close();
+        });
+
+        render();
+      })();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cat-schedule-static"
+version = "0.1.1"
+description = "Convert a manually saved course schedule HTML page into a self-contained static timetable"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+  "beautifulsoup4>=4.12.3,<5",
+]
+
+[project.scripts]
+cat-schedule-static = "cat_schedule_static.cli:main"
+
+[tool.setuptools.package-data]
+cat_schedule_static = ["template.html"]
